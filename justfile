@@ -1,2 +1,2 @@
 run:
-    uv run uvicorn main:app --reload
+    uv run uvicorn app.main:app --reload
