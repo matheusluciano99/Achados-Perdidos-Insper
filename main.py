@@ -1,6 +1,7 @@
-def main():
-    print("Hello from projeto!")
+import fastapi
 
+app = fastapi.FastAPI()
 
-if __name__ == "__main__":
-    main()
+@app.get("/")
+async def read_root():
+    return {"message": "Achados & Perdidos API"}
