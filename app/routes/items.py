@@ -1,0 +1,88 @@
+from collections.abc import Sequence
+from typing import Annotated
+
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
+from sqlmodel import Session, select
+
+from app.database import get_session
+from app.models.item import Item, ItemBase, ItemPublic
+
+
+router = APIRouter(prefix="/itens", tags=["Itens"])
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def get_item(
+    id_item: Annotated[int, Path(gt=0, description="Identificador do item.")],
+    session: SessionDep,
+) -> Item:
+    item = session.get(Item, id_item)
+    if item is None:
+        raise HTTPException(status_code=404, detail="Item não encontrado.")
+    return item
+
+
+ItemDep = Annotated[Item, Depends(get_item)]
+
+
+@router.post(
+    "",
+    response_model=ItemPublic,
+    status_code=status.HTTP_201_CREATED,
+    summary="Cadastrar item encontrado",
+)
+def create_item(data: ItemBase, session: SessionDep) -> Item:
+    item = Item.model_validate(data)
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
+
+
+@router.get("", response_model=list[ItemPublic], summary="Listar itens encontrados")
+def list_items(
+    session: SessionDep,
+    offset: Annotated[
+        int, Query(alias="deslocamento", ge=0, description="Quantidade de itens a ignorar.")
+    ] = 0,
+    limit: Annotated[
+        int, Query(alias="limite", ge=1, le=100, description="Quantidade máxima de itens.")
+    ] = 100,
+) -> Sequence[Item]:
+    return session.exec(select(Item).order_by(Item.id).offset(offset).limit(limit)).all()
+
+
+@router.get(
+    "/{id_item}",
+    response_model=ItemPublic,
+    summary="Consultar item encontrado",
+    responses={404: {"description": "Item não encontrado."}},
+)
+def read_item(item: ItemDep) -> Item:
+    return item
+
+
+@router.put(
+    "/{id_item}",
+    response_model=ItemPublic,
+    summary="Atualizar todos os dados do item",
+    responses={404: {"description": "Item não encontrado."}},
+)
+def update_item(data: ItemBase, item: ItemDep, session: SessionDep) -> Item:
+    item.sqlmodel_update(data.model_dump())
+    session.add(item)
+    session.commit()
+    session.refresh(item)
+    return item
+
+
+@router.delete(
+    "/{id_item}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Excluir item encontrado",
+    responses={404: {"description": "Item não encontrado."}},
+)
+def delete_item(item: ItemDep, session: SessionDep) -> Response:
+    session.delete(item)
+    session.commit()
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

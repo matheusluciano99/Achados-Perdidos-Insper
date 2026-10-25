@@ -12,3 +12,8 @@ dependencies = [
     "sqlmodel>=0.0.48",
     "uvicorn>=0.54.0",
 ]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.0.0",
+]

@@ -1,7 +1,9 @@
+from collections.abc import Iterator
+
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
-from sqlmodel import create_engine
+from sqlmodel import Session, create_engine
 
 
 class DatabaseSettings(BaseSettings):
@@ -28,3 +30,8 @@ engine = create_engine(
     ),
     pool_pre_ping=True,
 )
+
+
+def get_session() -> Iterator[Session]:
+    with Session(engine) as session:
+        yield session
