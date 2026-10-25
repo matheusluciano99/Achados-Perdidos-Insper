@@ -4,6 +4,7 @@ import fastapi
 from sqlmodel import SQLModel
 
 from app.database import engine
+from app.routes.retiradas import router as retiradas_router
 from app.routes.items import router as items_router
 
 
@@ -16,11 +17,12 @@ async def lifespan(app: fastapi.FastAPI):
 
 app = fastapi.FastAPI(
     title="Achados & Perdidos Insper",
-    description="API para cadastro e consulta de objetos encontrados no campus Insper.",
+    description="API para cadastro de objetos encontrados no campus Insper e registro de suas retiradas.",
     version="0.1.0",
     lifespan=lifespan,
 )
 app.include_router(items_router)
+app.include_router(retiradas_router)
 
 
 @app.get("/", summary="Consultar mensagem inicial")

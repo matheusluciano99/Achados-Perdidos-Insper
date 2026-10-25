@@ -2,14 +2,13 @@ from collections.abc import Sequence
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
-from sqlmodel import Session, select
+from sqlmodel import select
 
-from app.database import get_session
+from app.database import SessionDep, commit_or_conflict
 from app.models.item import Item, ItemBase, ItemPublic
 
 
 router = APIRouter(prefix="/itens", tags=["Itens"])
-SessionDep = Annotated[Session, Depends(get_session)]
 
 
 def get_item(
@@ -80,9 +79,14 @@ def update_item(data: ItemBase, item: ItemDep, session: SessionDep) -> Item:
     "/{id_item}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Excluir item encontrado",
-    responses={404: {"description": "Item não encontrado."}},
+    responses={
+        404: {"description": "Item não encontrado."},
+        409: {"description": "O item possui uma retirada registrada."},
+    },
 )
 def delete_item(item: ItemDep, session: SessionDep) -> Response:
     session.delete(item)
-    session.commit()
+    commit_or_conflict(
+        session, "O item possui uma retirada registrada. Exclua a retirada primeiro."
+    )
     return Response(status_code=status.HTTP_204_NO_CONTENT)

@@ -1,8 +1,11 @@
 from collections.abc import Iterator
+from typing import Annotated
 
+from fastapi import Depends, HTTPException
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy import URL
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session, create_engine
 
 
@@ -35,3 +38,14 @@ engine = create_engine(
 def get_session() -> Iterator[Session]:
     with Session(engine) as session:
         yield session
+
+
+SessionDep = Annotated[Session, Depends(get_session)]
+
+
+def commit_or_conflict(session: Session, detail: str) -> None:
+    try:
+        session.commit()
+    except IntegrityError as error:
+        session.rollback()
+        raise HTTPException(status_code=409, detail=detail) from error
