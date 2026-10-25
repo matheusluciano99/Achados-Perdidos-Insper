@@ -1,13 +1,30 @@
-# Lost & Found Insper
+# Achados & Perdidos Insper
 
-A REST API for lost and found items on the Insper campus, developed as an individual project for the **Megadados** course in the fifth semester of Computer Science.
+API REST de achados e perdidos do campus Insper, desenvolvida como projeto individual da disciplina de **Megadados**, no quinto semestre de Ciência da Computação.
 
-The system helps students find items that other people have found on campus and record their collection.
+## Endpoint
 
-## Technologies
+`GET /` retorna:
+
+```json
+{"message": "Achados & Perdidos API"}
+```
+
+## Tecnologias
 
 - Python 3.14
-- FastAPI and Uvicorn
-- SQLModel and PyMySQL
-- MySQL, running through Docker Compose
-- uv for dependency management
+- FastAPI e Uvicorn
+- uv para gerenciamento de dependências
+
+## Execução
+
+```bash
+uv sync
+uv run uvicorn app.main:app --reload
+```
+
+O mesmo comando de inicialização do servidor está disponível por meio de `just run`.
+
+## Uso de IA
+
+O OpenAI Codex foi utilizado para interpretar os requisitos do projeto, gerar alguns códigos e editar a documentação.
