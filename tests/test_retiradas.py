@@ -35,6 +35,7 @@ class RetiradaTests(unittest.TestCase):
             json={
                 "nome": "Garrafa de água",
                 "descricao": "Garrafa azul com tampa preta",
+                "predio": 1,
                 "local_encontrado": "Biblioteca",
                 "encontrado_em": "2026-10-25T10:30:00",
             },

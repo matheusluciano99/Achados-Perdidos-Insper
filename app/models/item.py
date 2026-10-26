@@ -22,12 +22,19 @@ class ItemBase(SQLModel):
         description="Características que ajudam a identificar o objeto.",
         schema_extra={"examples": ["Garrafa azul com tampa preta"]},
     )
+    predio: int = Field(
+        ge=1,
+        le=3,
+        title="Prédio",
+        description="Prédio do campus onde o objeto foi encontrado: 1, 2 ou 3.",
+        schema_extra={"examples": [1], "strict": True},
+    )
     local_encontrado: str = Field(
         title="Local onde foi encontrado",
         min_length=1,
         max_length=200,
-        description="Local do campus onde o objeto foi encontrado.",
-        schema_extra={"examples": ["Biblioteca"]},
+        description="Descrição livre do local dentro do prédio onde o objeto foi encontrado.",
+        schema_extra={"examples": ["Biblioteca", "Corredor do segundo andar", "Sala Amador Aguiar"]},
     )
     encontrado_em: NaiveDatetime = Field(
         title="Data e hora em que foi encontrado",

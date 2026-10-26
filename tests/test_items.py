@@ -27,6 +27,7 @@ class ItemTests(unittest.TestCase):
         self.item_data = {
             "nome": "Garrafa de água",
             "descricao": "Garrafa azul com tampa preta",
+            "predio": 1,
             "local_encontrado": "Biblioteca",
             "encontrado_em": "2026-10-25T10:30:00",
         }
@@ -43,7 +44,7 @@ class ItemTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), item)
 
-        updated = self.item_data | {"nome": "Garrafa térmica", "local_encontrado": "Sala 101"}
+        updated = self.item_data | {"nome": "Garrafa térmica", "predio": 3, "local_encontrado": "Sala Amador Aguiar"}
         response = self.client.put(path, json=updated)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), updated | {"id": item["id"], "id_usuario": self.usuario.id})
@@ -55,6 +56,15 @@ class ItemTests(unittest.TestCase):
         self.assertEqual(self.client.get(path).status_code, 404)
         self.assertEqual(self.client.put(path, json=updated).status_code, 404)
         self.assertEqual(self.client.delete(path).status_code, 404)
+
+    def test_all_buildings_accept_free_location_descriptions(self):
+        for predio, local in ((1, "Biblioteca"), (2, "Corredor do segundo andar"), (3, "Sala Amador Aguiar")):
+            with self.subTest(predio=predio, local=local):
+                response = self.client.post("/itens", json=self.item_data | {"predio": predio, "local_encontrado": local})
+                self.assertEqual(response.status_code, 201)
+                item = self.client.get(f"/itens/{response.json()['id']}").json()
+                self.assertEqual(item["predio"], predio)
+                self.assertEqual(item["local_encontrado"], local)
 
     def test_list_pagination(self):
         for _ in range(2):
@@ -81,6 +91,13 @@ class ItemTests(unittest.TestCase):
             {"nome": "x" * 101},
             {"descricao": ""},
             {"descricao": "x" * 1001},
+            {"predio": 0},
+            {"predio": 4},
+            {"predio": None},
+            {"predio": "Biblioteca"},
+            {"predio": "1"},
+            {"predio": 1.5},
+            {"predio": True},
             {"local_encontrado": " "},
             {"local_encontrado": "x" * 201},
             {"encontrado_em": "invalid"},
@@ -95,6 +112,10 @@ class ItemTests(unittest.TestCase):
                 self.assertEqual(self.client.post("/itens", json=data).status_code, 422)
                 self.assertEqual(self.client.put(path, json=data).status_code, 422)
 
+        sem_predio = self.item_data.copy()
+        sem_predio.pop("predio")
+        self.assertEqual(self.client.post("/itens", json=sem_predio).status_code, 422)
+        self.assertEqual(self.client.put(path, json=sem_predio).status_code, 422)
         self.assertEqual(self.client.post("/itens", json={}).status_code, 422)
         self.assertEqual(self.client.put(path, json={"nome": "Outro item"}).status_code, 422)
         self.assertEqual(self.client.get(path).json(), self.item_data | {
@@ -119,3 +140,6 @@ class ItemTests(unittest.TestCase):
         properties = schema["components"]["schemas"]["ItemBase"]["properties"]
         self.assertEqual(set(properties), set(self.item_data))
         self.assertEqual(properties["nome"]["examples"], ["Garrafa de água"])
+        self.assertEqual(properties["predio"]["minimum"], 1)
+        self.assertEqual(properties["predio"]["maximum"], 3)
+        self.assertIn("predio", schema["components"]["schemas"]["ItemBase"]["required"])

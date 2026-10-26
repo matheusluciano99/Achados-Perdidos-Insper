@@ -1,5 +1,5 @@
-from datetime import UTC, datetime, timedelta
 import unittest
+from datetime import UTC, datetime, timedelta
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -7,8 +7,8 @@ from jwt import encode
 from sqlmodel import Session
 
 from app import auth
-from app.main import app
 from app.database import engine, get_session
+from app.main import app
 from app.models.user import Usuario
 
 
@@ -76,6 +76,7 @@ class AutenticacaoTests(unittest.TestCase):
         professor_headers = self.headers(self.claims | {"sub": self.professor.email})
         dados_item = {
             "nome": "Garrafa", "descricao": "Garrafa azul",
+            "predio": 1,
             "local_encontrado": "Biblioteca", "encontrado_em": "2026-10-25T10:30:00",
         }
         response = self.client.post("/itens", json=dados_item, headers=aluno_headers)
