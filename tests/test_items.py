@@ -7,6 +7,7 @@ from app.auth import exigir_autenticacao
 from app.database import engine, get_session
 from app.main import app
 from app.models.user import Usuario
+from tests.helpers import foto_upload
 
 
 class ItemTests(unittest.TestCase):
@@ -33,7 +34,7 @@ class ItemTests(unittest.TestCase):
         }
 
     def test_crud(self):
-        response = self.client.post("/itens", json=self.item_data)
+        response = self.client.post("/itens", data=self.item_data, files=foto_upload())
         self.assertEqual(response.status_code, 201)
         item = response.json()
         self.assertGreater(item["id"], 0)
@@ -60,7 +61,7 @@ class ItemTests(unittest.TestCase):
     def test_all_buildings_accept_free_location_descriptions(self):
         for predio, local in ((1, "Biblioteca"), (2, "Corredor do segundo andar"), (3, "Sala Amador Aguiar")):
             with self.subTest(predio=predio, local=local):
-                response = self.client.post("/itens", json=self.item_data | {"predio": predio, "local_encontrado": local})
+                response = self.client.post("/itens", data=self.item_data | {"predio": predio, "local_encontrado": local}, files=foto_upload())
                 self.assertEqual(response.status_code, 201)
                 item = self.client.get(f"/itens/{response.json()['id']}").json()
                 self.assertEqual(item["predio"], predio)
@@ -68,7 +69,7 @@ class ItemTests(unittest.TestCase):
 
     def test_list_pagination(self):
         for _ in range(2):
-            self.assertEqual(self.client.post("/itens", json=self.item_data).status_code, 201)
+            self.assertEqual(self.client.post("/itens", data=self.item_data, files=foto_upload()).status_code, 201)
 
         first = self.client.get("/itens", params={"limite": 1})
         second = self.client.get("/itens", params={"limite": 1, "deslocamento": 1})
@@ -83,7 +84,7 @@ class ItemTests(unittest.TestCase):
                 self.assertEqual(self.client.get("/itens", params=params).status_code, 422)
 
     def test_invalid_data_is_rejected_for_create_and_update(self):
-        response = self.client.post("/itens", json=self.item_data)
+        response = self.client.post("/itens", data=self.item_data, files=foto_upload())
         self.assertEqual(response.status_code, 201)
         path = f"/itens/{response.json()['id']}"
         invalid_changes = (
@@ -95,7 +96,6 @@ class ItemTests(unittest.TestCase):
             {"predio": 4},
             {"predio": None},
             {"predio": "Biblioteca"},
-            {"predio": "1"},
             {"predio": 1.5},
             {"predio": True},
             {"local_encontrado": " "},
@@ -109,13 +109,14 @@ class ItemTests(unittest.TestCase):
         for changes in invalid_changes:
             with self.subTest(changes=changes):
                 data = self.item_data | changes
-                self.assertEqual(self.client.post("/itens", json=data).status_code, 422)
+                self.assertEqual(self.client.post("/itens", data=data, files=foto_upload()).status_code, 422)
                 self.assertEqual(self.client.put(path, json=data).status_code, 422)
 
         sem_predio = self.item_data.copy()
         sem_predio.pop("predio")
-        self.assertEqual(self.client.post("/itens", json=sem_predio).status_code, 422)
+        self.assertEqual(self.client.post("/itens", data=sem_predio, files=foto_upload()).status_code, 422)
         self.assertEqual(self.client.put(path, json=sem_predio).status_code, 422)
+        self.assertEqual(self.client.put(path, json=self.item_data | {"predio": "1"}).status_code, 422)
         self.assertEqual(self.client.post("/itens", json={}).status_code, 422)
         self.assertEqual(self.client.put(path, json={"nome": "Outro item"}).status_code, 422)
         self.assertEqual(self.client.get(path).json(), self.item_data | {

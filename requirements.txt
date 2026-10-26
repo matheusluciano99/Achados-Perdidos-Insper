@@ -1,7 +1,9 @@
 email-validator
 fastapi
+pillow
 pydantic-settings
 pyjwt
 pymysql[rsa]
+python-multipart
 sqlmodel
 uvicorn

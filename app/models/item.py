@@ -1,4 +1,5 @@
-from pydantic import ConfigDict, NaiveDatetime
+from fastapi import UploadFile
+from pydantic import ConfigDict, NaiveDatetime, field_validator
 from sqlmodel import Field, SQLModel
 
 
@@ -41,6 +42,17 @@ class ItemBase(SQLModel):
         description="Data e hora em que o objeto foi encontrado, no horário de São Paulo, sem indicação de fuso.",
         schema_extra={"examples": ["2026-10-25T10:30:00"]},
     )
+
+
+class ItemCreate(ItemBase):
+    model_config = ConfigDict(title="Cadastro do item com foto")
+
+    foto: UploadFile = Field(description="Foto obrigatória em JPEG ou PNG de até 5 MB.")
+
+    @field_validator("predio", mode="before")
+    @classmethod
+    def converter_predio(cls, valor: object) -> object:
+        return int(valor) if isinstance(valor, str) else valor
 
 
 class Item(ItemBase, table=True):

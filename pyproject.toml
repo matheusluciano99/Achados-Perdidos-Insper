@@ -7,9 +7,11 @@ requires-python = ">=3.14"
 dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.150.0",
+    "pillow>=13.0.0",
     "pydantic-settings>=2.16.0",
     "pyjwt>=2.15.1",
     "pymysql[rsa]>=1.2.3",
+    "python-multipart>=0.0.32",
     "sqlmodel>=0.0.48",
     "uvicorn>=0.54.0",
 ]

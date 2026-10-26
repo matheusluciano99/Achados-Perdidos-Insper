@@ -10,6 +10,7 @@ from app import auth
 from app.database import engine, get_session
 from app.main import app
 from app.models.user import Usuario
+from tests.helpers import foto_upload
 
 
 class AutenticacaoTests(unittest.TestCase):
@@ -54,6 +55,10 @@ class AutenticacaoTests(unittest.TestCase):
                     response = self.client.request(method, path, json={})
                     self.assertEqual(response.status_code, 401)
                     self.assertEqual(response.headers["WWW-Authenticate"], "Bearer")
+        for method in ("PUT", "GET"):
+            with self.subTest(method=method, path="/itens/1/foto"):
+                response = self.client.request(method, "/itens/1/foto", files={"foto": ("foto.jpg", b"foto", "image/jpeg")})
+                self.assertEqual(response.status_code, 401)
 
     def test_both_institutional_domains_are_accepted(self):
         for email in ("aluno@al.insper.edu.br", "professor@insper.edu.br", "ALUNO@AL.INSPER.EDU.BR"):
@@ -79,7 +84,7 @@ class AutenticacaoTests(unittest.TestCase):
             "predio": 1,
             "local_encontrado": "Biblioteca", "encontrado_em": "2026-10-25T10:30:00",
         }
-        response = self.client.post("/itens", json=dados_item, headers=aluno_headers)
+        response = self.client.post("/itens", data=dados_item, files=foto_upload(), headers=aluno_headers)
         self.assertEqual(response.status_code, 201)
         item = response.json()
         self.assertEqual(item["id_usuario"], self.aluno.id)
@@ -104,7 +109,10 @@ class AutenticacaoTests(unittest.TestCase):
             ("/retiradas", dados_retirada, professor_headers, self.aluno.id),
         ):
             with self.subTest(path=path):
-                response = self.client.post(path, json=dados | {"id_usuario": id_usuario}, headers=headers)
+                if path == "/itens":
+                    response = self.client.post(path, data=dados | {"id_usuario": id_usuario}, files=foto_upload(), headers=headers)
+                else:
+                    response = self.client.post(path, json=dados | {"id_usuario": id_usuario}, headers=headers)
                 self.assertEqual(response.status_code, 422)
 
     def test_invalid_claims_are_rejected(self):

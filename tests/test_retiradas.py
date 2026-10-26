@@ -7,6 +7,7 @@ from app.auth import exigir_autenticacao
 from app.database import engine, get_session
 from app.main import app
 from app.models.user import Usuario
+from tests.helpers import foto_upload
 
 
 class RetiradaTests(unittest.TestCase):
@@ -32,13 +33,14 @@ class RetiradaTests(unittest.TestCase):
     def create_item(self):
         response = self.client.post(
             "/itens",
-            json={
+            data={
                 "nome": "Garrafa de água",
                 "descricao": "Garrafa azul com tampa preta",
                 "predio": 1,
                 "local_encontrado": "Biblioteca",
                 "encontrado_em": "2026-10-25T10:30:00",
             },
+            files=foto_upload(),
         )
         self.assertEqual(response.status_code, 201)
         return response.json()["id"]
