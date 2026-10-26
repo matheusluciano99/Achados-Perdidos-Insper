@@ -1,3 +1,6 @@
+import smtplib
+import ssl
+from email.message import EmailMessage
 from typing import Annotated
 
 from fastapi import Depends, HTTPException
@@ -18,11 +21,40 @@ class AuthSettings(BaseSettings):
     )
 
     auth_secret_key: SecretStr | None = Field(default=None, min_length=32)
+    smtp_username: EmailStr | None = None
+    smtp_password: SecretStr | None = None
 
 
 config_auth = AuthSettings()
 bearer = HTTPBearer(auto_error=False, bearerFormat="JWT", scheme_name="AcessoInsper")
 validar_email = TypeAdapter(EmailStr)
+
+
+def obter_chave() -> str:
+    if config_auth.auth_secret_key is None:
+        raise HTTPException(status_code=503, detail="A chave de autenticação não está configurada.")
+    return config_auth.auth_secret_key.get_secret_value()
+
+
+def enviar_codigo(email: str, codigo: str) -> None:
+    if not config_auth.smtp_username or not config_auth.smtp_password:
+        raise HTTPException(status_code=503, detail="O envio de e-mail não está configurado.")
+    mensagem = EmailMessage()
+    mensagem["Subject"] = "Seu código de acesso — Achados & Perdidos Insper"
+    mensagem["From"] = config_auth.smtp_username
+    mensagem["To"] = email
+    mensagem.set_content(
+        f"Seu código de acesso é: {codigo}\n\n"
+        "Ele expira em 10 minutos e só pode ser usado uma vez.\n"
+        "Se você não solicitou este acesso, ignore esta mensagem.\n"
+    )
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as smtp:
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.login(config_auth.smtp_username, config_auth.smtp_password.get_secret_value())
+            smtp.send_message(mensagem)
+    except OSError as error:
+        raise HTTPException(status_code=503, detail="Não foi possível enviar o código. Tente novamente.") from error
 
 
 def exigir_autenticacao(
@@ -34,12 +66,11 @@ def exigir_autenticacao(
             status_code=401, detail="Autenticação necessária.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if config_auth.auth_secret_key is None:
-        raise HTTPException(status_code=503, detail="A chave de autenticação não está configurada.")
+    chave = obter_chave()
     try:
         claims = decode(
             credenciais.credentials,
-            config_auth.auth_secret_key.get_secret_value(),
+            chave,
             algorithms=["HS256"],
             audience="achados-perdidos-api",
             issuer="achados-perdidos-insper",
