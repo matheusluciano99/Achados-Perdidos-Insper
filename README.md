@@ -4,6 +4,8 @@ API REST de achados e perdidos do campus Insper, desenvolvida como projeto indiv
 
 ## Endpoints
 
+As rotas de itens e retiradas exigem autenticação. A raiz e a documentação são públicas.
+
 `GET /` retorna:
 
 ```json
@@ -37,6 +39,8 @@ Exemplo de corpo para cadastro e atualização completa:
 
 Todos esses campos são obrigatórios. Os textos têm espaços removidos das extremidades e não podem ficar vazios. Os limites são 100 caracteres para `nome`, 1000 para `descricao` e 200 para `local_encontrado`. A data usa o horário local de São Paulo, sem indicação de fuso horário. O banco gera o `id`, e a API rejeita campos adicionais nas requisições.
 
+O cadastro vincula o item ao usuário autenticado. A resposta inclui `id_usuario`, definido pela API e preservado nas atualizações.
+
 ### Retiradas
 
 | Método | Rota | Operação | Sucesso |
@@ -52,13 +56,11 @@ Exemplo de corpo para registro e atualização completa:
 ```json
 {
   "id_item": 1,
-  "nome_retirante": "Maria Silva",
-  "email_retirante": "maria.silva@al.insper.edu.br",
   "retirado_em": "2026-10-25T14:00:00"
 }
 ```
 
-Todos os campos são obrigatórios. O nome tem limite de 100 caracteres e não pode ficar vazio após a remoção de espaços nas extremidades. O e-mail deve ser válido e ter até 254 caracteres. A data segue o mesmo formato e horário local dos itens. O banco gera o `id`, e campos adicionais são rejeitados.
+Os dois campos são obrigatórios. A data segue o mesmo formato e horário local dos itens. O banco gera o `id`, e campos adicionais são rejeitados. A retirada é vinculada ao usuário autenticado que levou o objeto; a resposta inclui seu `id_usuario`, preservado nas atualizações. Nome e e-mail dessa pessoa são armazenados em `usuario`.
 
 A listagem usa os mesmos parâmetros `deslocamento` e `limite` dos itens, com resultados ordenados por identificador. Retiradas ou itens inexistentes retornam 404; dados inválidos retornam 422.
 
@@ -66,12 +68,29 @@ Cada retirada deve apontar para um item existente, e cada item pode ter no máxi
 
 Um item com retirada registrada não pode ser excluído: a API retorna 409. Excluir a retirada mantém o item e permite registrar uma nova retirada ou excluir o item.
 
+## Autenticação
+
+As requisições às rotas protegidas devem enviar `Authorization: Bearer <token>`. A API valida a assinatura JWT com HS256, a validade, o emissor `achados-perdidos-insper`, o destinatário `achados-perdidos-api` e o e-mail no campo `sub`, que deve corresponder a um usuário cadastrado. São aceitos apenas os domínios `al.insper.edu.br` e `insper.edu.br`.
+
+Configure `AUTH_SECRET_KEY` no `.env` com uma chave aleatória de pelo menos 32 caracteres. Para gerar uma chave localmente:
+
+```bash
+uv run python -c 'import secrets; print(secrets.token_urlsafe(32))'
+```
+
+Sem token, com token inválido ou usuário não cadastrado, a resposta é 401. E-mails de outros domínios recebem 403. Sem a chave configurada, tentativas com token recebem 503. O Swagger permite informar o token no botão **Authorize**.
+
+Esta etapa implementa apenas a validação de acesso; a API ainda não oferece login nem emissão de tokens.
+
 ## Modelo de dados
 
-Os campos JSON em português são mapeados pelo SQLModel para as colunas abaixo.
+Os modelos, as tabelas e os campos JSON usam nomes em português.
 
 ![Modelo relacional gerado no MySQL Workbench](docs/modelo-relacional.png)
 
+A tabela `usuario` armazena o `id`, gerado pelo banco, o `nome`, obrigatório e com limite de 100 caracteres, e o `email`, obrigatório e único. O modelo remove espaços nas extremidades do nome, rejeita nomes vazios, valida o e-mail institucional e o converte para minúsculas.
+
+`item.id_usuario` identifica quem cadastrou o pertence encontrado. `retirada.id_usuario` identifica quem retirou o pertence, enquanto `retirada.id_item` aponta para o item. As chaves estrangeiras impedem referências a usuários inexistentes e a exclusão de usuários que tenham itens ou retiradas vinculados. Todos os usuários autenticados podem gerenciar os registros.
 
 ## Tecnologias
 
@@ -102,7 +121,9 @@ uv run uvicorn app.main:app --reload
 
 O mesmo comando de inicialização do servidor está disponível por meio de `just run`.
 
-Na inicialização, a API cria as tabelas de itens e retiradas caso elas ainda não existam. A documentação interativa está disponível em `http://127.0.0.1:8000/docs`.
+Na inicialização, a API cria as tabelas de itens, retiradas e usuários caso elas ainda não existam. A documentação interativa está disponível em `http://127.0.0.1:8000/docs`.
+
+Para atualizar um banco de desenvolvimento antigo, com `item` e `collection` vazias, os scripts em `migrations/` devem ser executados uma vez, na ordem numérica, antes de iniciar esta versão da API. Eles renomeiam as tabelas e colunas e adicionam os vínculos com usuários. Bancos com registros existentes precisam ter seus usuários identificados antes dessa alteração. A criação automática de tabelas não atualiza estruturas já existentes.
 
 O MySQL fica disponível em `127.0.0.1:3306`. A porta pode ser alterada em `MYSQL_PORT`. Os dados são armazenados no volume `mysql_data` e preservados ao parar o contêiner com `docker compose stop mysql`.
 
@@ -116,7 +137,7 @@ Com o MySQL iniciado, execute:
 uv run python -m unittest discover -s tests -v
 ```
 
-Os testes verificam a conexão com o MySQL, os CRUDs de itens e retiradas, paginação, validação de dados, integridade dos vínculos, conflitos e acesso à documentação. Os registros usados nos testes do CRUD são revertidos ao final de cada teste.
+Os testes verificam a conexão com o MySQL, os CRUDs de itens e retiradas, paginação, validação de dados, integridade dos vínculos, conflitos, autenticação e acesso à documentação. Os registros usados nos testes do CRUD são revertidos ao final de cada teste.
 
 ## Uso de IA
 

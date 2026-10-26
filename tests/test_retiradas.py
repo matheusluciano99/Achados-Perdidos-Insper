@@ -26,8 +26,6 @@ class RetiradaTests(unittest.TestCase):
         self.client = self.enterContext(TestClient(app))
         self.retirada_data = {
             "id_item": self.create_item(),
-            "nome_retirante": "Maria Silva",
-            "email_retirante": "maria.silva@al.insper.edu.br",
             "retirado_em": "2026-10-25T14:00:00",
         }
 
@@ -52,20 +50,22 @@ class RetiradaTests(unittest.TestCase):
     def test_crud(self):
         retirada = self.create_retirada(self.retirada_data)
         self.assertGreater(retirada["id"], 0)
-        self.assertEqual(retirada, self.retirada_data | {"id": retirada["id"]})
+        self.assertEqual(retirada, self.retirada_data | {
+            "id": retirada["id"], "id_usuario": self.usuario.id,
+        })
         path = f"/retiradas/{retirada['id']}"
         response = self.client.get(path)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), retirada)
 
         updated = self.retirada_data | {
-            "nome_retirante": "João Santos",
-            "email_retirante": "joao.santos@al.insper.edu.br",
             "retirado_em": "2026-10-25T15:00:00",
         }
         response = self.client.put(path, json=updated)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), updated | {"id": retirada["id"]})
+        self.assertEqual(response.json(), updated | {
+            "id": retirada["id"], "id_usuario": self.usuario.id,
+        })
         self.assertEqual(self.client.get(path).json(), response.json())
 
         response = self.client.delete(path)
@@ -107,7 +107,9 @@ class RetiradaTests(unittest.TestCase):
         updated = self.retirada_data | {"id_item": self.create_item()}
         response = self.client.put(f"/retiradas/{retirada['id']}", json=updated)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), updated | {"id": retirada["id"]})
+        self.assertEqual(response.json(), updated | {
+            "id": retirada["id"], "id_usuario": self.usuario.id,
+        })
         self.assertEqual(
             self.client.delete(f"/itens/{retirada['id_item']}").status_code, 204
         )
@@ -147,14 +149,13 @@ class RetiradaTests(unittest.TestCase):
         invalid_changes = (
             {"id_item": 0},
             {"id_item": -1},
-            {"nome_retirante": "   "},
-            {"nome_retirante": "x" * 101},
-            {"email_retirante": "invalido"},
-            {"email_retirante": "x" * 255 + "@insper.edu.br"},
+            {"nome_retirante": "Maria Silva"},
+            {"email_retirante": "maria@al.insper.edu.br"},
             {"retirado_em": "invalido"},
             {"retirado_em": "2026-10-25T14:00:00-03:00"},
             {"retirado_em": None},
             {"id": 1},
+            {"id_usuario": self.usuario.id + 1},
         )
         for changes in invalid_changes:
             with self.subTest(changes=changes):
@@ -182,4 +183,4 @@ class RetiradaTests(unittest.TestCase):
         )
         properties = schema["components"]["schemas"]["RetiradaBase"]["properties"]
         self.assertEqual(set(properties), set(self.retirada_data))
-        self.assertEqual(properties["nome_retirante"]["examples"], ["Maria Silva"])
+        self.assertEqual(properties["id_item"]["examples"], [1])

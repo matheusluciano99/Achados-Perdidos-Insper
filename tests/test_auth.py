@@ -71,6 +71,41 @@ class AutenticacaoTests(unittest.TestCase):
         ))
         self.assertEqual(response.status_code, 401)
 
+    def test_item_and_withdrawal_use_authenticated_users(self):
+        aluno_headers = self.headers(self.claims)
+        professor_headers = self.headers(self.claims | {"sub": self.professor.email})
+        dados_item = {
+            "nome": "Garrafa", "descricao": "Garrafa azul",
+            "local_encontrado": "Biblioteca", "encontrado_em": "2026-10-25T10:30:00",
+        }
+        response = self.client.post("/itens", json=dados_item, headers=aluno_headers)
+        self.assertEqual(response.status_code, 201)
+        item = response.json()
+        self.assertEqual(item["id_usuario"], self.aluno.id)
+
+        dados_retirada = {"id_item": item["id"], "retirado_em": "2026-10-25T14:00:00"}
+        response = self.client.post("/retiradas", json=dados_retirada, headers=professor_headers)
+        self.assertEqual(response.status_code, 201)
+        retirada = response.json()
+        self.assertEqual(retirada["id_usuario"], self.professor.id)
+
+        response = self.client.put(f"/itens/{item['id']}", json=dados_item, headers=professor_headers)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id_usuario"], self.aluno.id)
+        response = self.client.put(
+            f"/retiradas/{retirada['id']}", json=dados_retirada, headers=aluno_headers,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["id_usuario"], self.professor.id)
+
+        for path, dados, headers, id_usuario in (
+            ("/itens", dados_item, aluno_headers, self.professor.id),
+            ("/retiradas", dados_retirada, professor_headers, self.aluno.id),
+        ):
+            with self.subTest(path=path):
+                response = self.client.post(path, json=dados | {"id_usuario": id_usuario}, headers=headers)
+                self.assertEqual(response.status_code, 422)
+
     def test_invalid_claims_are_rejected(self):
         agora = datetime.now(UTC)
         for changes in (

@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlmodel import select
 
+from app.auth import UsuarioDep
 from app.database import SessionDep, commit_or_conflict
 from app.models.item import Item, ItemBase, ItemPublic
 
@@ -30,8 +31,8 @@ ItemDep = Annotated[Item, Depends(get_item)]
     status_code=status.HTTP_201_CREATED,
     summary="Cadastrar item encontrado",
 )
-def create_item(data: ItemBase, session: SessionDep) -> Item:
-    item = Item.model_validate(data)
+def create_item(data: ItemBase, session: SessionDep, usuario: UsuarioDep) -> Item:
+    item = Item.model_validate(data, update={"id_usuario": usuario.id})
     session.add(item)
     session.commit()
     session.refresh(item)

@@ -36,7 +36,7 @@ class ItemTests(unittest.TestCase):
         self.assertEqual(response.status_code, 201)
         item = response.json()
         self.assertGreater(item["id"], 0)
-        self.assertEqual(item, self.item_data | {"id": item["id"]})
+        self.assertEqual(item, self.item_data | {"id": item["id"], "id_usuario": self.usuario.id})
         path = f"/itens/{item['id']}"
 
         response = self.client.get(path)
@@ -46,7 +46,7 @@ class ItemTests(unittest.TestCase):
         updated = self.item_data | {"nome": "Garrafa térmica", "local_encontrado": "Sala 101"}
         response = self.client.put(path, json=updated)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), updated | {"id": item["id"]})
+        self.assertEqual(response.json(), updated | {"id": item["id"], "id_usuario": self.usuario.id})
         self.assertEqual(self.client.get(path).json(), response.json())
 
         response = self.client.delete(path)
@@ -87,6 +87,7 @@ class ItemTests(unittest.TestCase):
             {"encontrado_em": "2026-10-25T10:30:00-03:00"},
             {"encontrado_em": None},
             {"id": 1},
+            {"id_usuario": self.usuario.id + 1},
         )
         for changes in invalid_changes:
             with self.subTest(changes=changes):
@@ -96,7 +97,9 @@ class ItemTests(unittest.TestCase):
 
         self.assertEqual(self.client.post("/itens", json={}).status_code, 422)
         self.assertEqual(self.client.put(path, json={"nome": "Outro item"}).status_code, 422)
-        self.assertEqual(self.client.get(path).json(), self.item_data | {"id": response.json()["id"]})
+        self.assertEqual(self.client.get(path).json(), self.item_data | {
+            "id": response.json()["id"], "id_usuario": self.usuario.id,
+        })
 
     def test_invalid_item_ids(self):
         for method in ("GET", "PUT", "DELETE"):

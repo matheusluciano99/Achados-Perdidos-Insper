@@ -4,6 +4,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Response, status
 from sqlmodel import select
 
+from app.auth import UsuarioDep
 from app.database import SessionDep, commit_or_conflict
 from app.models.retirada import Retirada, RetiradaBase, RetiradaPublica
 from app.models.item import Item
@@ -35,10 +36,10 @@ RetiradaDep = Annotated[Retirada, Depends(get_retirada)]
         409: {"description": "O item já possui retirada ou não está mais disponível."},
     },
 )
-def create_retirada(data: RetiradaBase, session: SessionDep) -> Retirada:
-    if session.get(Item, data.item_id) is None:
+def create_retirada(data: RetiradaBase, session: SessionDep, usuario: UsuarioDep) -> Retirada:
+    if session.get(Item, data.id_item) is None:
         raise HTTPException(status_code=404, detail="Item não encontrado.")
-    retirada = Retirada.model_validate(data)
+    retirada = Retirada.model_validate(data, update={"id_usuario": usuario.id})
     session.add(retirada)
     commit_or_conflict(session, "O item já possui retirada ou não está mais disponível.")
     session.refresh(retirada)
@@ -82,7 +83,7 @@ def read_retirada(retirada: RetiradaDep) -> Retirada:
 def update_retirada(
     data: RetiradaBase, retirada: RetiradaDep, session: SessionDep
 ) -> Retirada:
-    if session.get(Item, data.item_id) is None:
+    if session.get(Item, data.id_item) is None:
         raise HTTPException(status_code=404, detail="Item não encontrado.")
     retirada.sqlmodel_update(data.model_dump())
     session.add(retirada)
