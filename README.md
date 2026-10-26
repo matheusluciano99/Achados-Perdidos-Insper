@@ -26,7 +26,20 @@ O cadastro de itens encontrados oferece as seguintes operações:
 
 A listagem aceita `deslocamento` (padrão 0) e `limite` (padrão e máximo 100), com resultados ordenados por identificador. Itens inexistentes retornam 404, e dados inválidos retornam 422.
 
-Exemplo de corpo para cadastro e atualização completa:
+O cadastro (`POST /itens`) recebe os dados e a foto obrigatória juntos, em `multipart/form-data`. No Swagger, preencha os campos e selecione o arquivo no campo `foto`. Exemplo com curl:
+
+```bash
+curl -X POST http://127.0.0.1:8000/itens \
+  -H "Authorization: Bearer SEU_TOKEN" \
+  -F "nome=Garrafa de água" \
+  -F "descricao=Garrafa azul com tampa preta" \
+  -F "predio=1" \
+  -F "local_encontrado=Biblioteca" \
+  -F "encontrado_em=2026-10-25T10:30:00" \
+  -F "foto=@foto.jpg"
+```
+
+A atualização dos dados (`PUT /itens/{id_item}`) usa JSON e mantém a foto atual. Exemplo de corpo:
 
 ```json
 {
@@ -43,6 +56,21 @@ Todos esses campos são obrigatórios. Os textos têm espaços removidos das ext
 `predio` é um número inteiro obrigatório: 1, 2 ou 3. A API rejeita prédios fora desse conjunto. `local_encontrado` é um texto livre para detalhar o lugar, como `Biblioteca`, `Corredor do segundo andar` ou `Sala Amador Aguiar`.
 
 O cadastro vincula o item ao usuário autenticado. A resposta inclui `id_usuario`, definido pela API e preservado nas atualizações.
+
+### Foto do item
+
+Todo item deve ter uma foto, enviada no cadastro. A API salva o item e a imagem na mesma transação; falhas na validação ou na gravação da foto não deixam um item cadastrado sem imagem. Estas operações exigem autenticação:
+
+| Método | Rota | Operação | Sucesso |
+| --- | --- | --- | --- |
+| PUT | `/itens/{id_item}/foto` | Substituir a foto | 204, sem corpo |
+| GET | `/itens/{id_item}/foto` | Consultar a foto em JPEG | 200 |
+
+O cadastro e a substituição usam `multipart/form-data`, com o arquivo no campo `foto`. São aceitas imagens JPEG e PNG de até 5 MB e 20 megapixels. A API verifica o conteúdo do arquivo, ajusta a orientação e salva uma versão JPEG com até 1920 pixels no maior lado, sem os metadados EXIF. Não há exclusão avulsa da foto.
+
+Arquivos inválidos ou de outros formatos retornam 400; imagens acima dos limites retornam 413. Item ou foto inexistente retorna 404. Uma imagem inválida não substitui a foto já cadastrada. A resposta da foto inclui `Cache-Control: private, no-store`.
+
+Excluir o item também exclui sua foto. Se a exclusão do item for bloqueada por uma retirada existente, a foto é preservada.
 
 ### Retiradas
 
@@ -133,10 +161,13 @@ A tabela `usuario` armazena o `id`, gerado pelo banco, o `nome`, obrigatório e 
 
 A tabela `codigo_login` mantém um registro por e-mail, com o hash do código, horário de envio, expiração e quantidade de tentativas incorretas. Seus horários são armazenados em UTC. Ela também atende o primeiro acesso, antes de existir um usuário cadastrado.
 
+A tabela `foto_item` armazena a imagem JPEG em uma coluna `MEDIUMBLOB`. Seu `id_item` é chave primária e chave estrangeira para `item.id`, garantindo no máximo uma foto por item. A API exige a foto e cria os dois registros na mesma transação. A exclusão do item remove a foto por `ON DELETE CASCADE`. As imagens ficam no MySQL e são preservadas junto com os dados do banco.
+
 ## Tecnologias
 
 - Python 3.14
 - FastAPI e Uvicorn
+- python-multipart para upload e Pillow para validação e preparação das fotos
 - SQLModel e PyMySQL
 - pydantic-settings para leitura das variáveis de ambiente
 - MySQL 8.4 via Docker Compose
@@ -162,7 +193,7 @@ uv run uvicorn app.main:app --reload
 
 O mesmo comando de inicialização do servidor está disponível por meio de `just run`.
 
-Na inicialização, a API cria as tabelas de itens, retiradas, usuários e códigos de login caso elas ainda não existam. A documentação interativa está disponível em `http://127.0.0.1:8000/docs`.
+Na inicialização, a API cria as tabelas de itens, fotos, retiradas, usuários e códigos de login caso elas ainda não existam. A documentação interativa está disponível em `http://127.0.0.1:8000/docs`.
 
 Os scripts em `migrations/` atualizam bancos de desenvolvimento antigos e devem ser executados uma vez, na ordem numérica, conforme a versão do banco. `001_nomes_em_portugues.sql` renomeia as tabelas e colunas; `002_vincular_usuarios.sql` adiciona os vínculos com usuários; `003_adicionar_predio.sql` adiciona o prédio obrigatório ao item. As alterações foram aplicadas localmente com a tabela de itens vazia. Se houver registros antigos, seus usuários e prédios reais precisam ser identificados antes de adicionar os campos obrigatórios. A criação automática de tabelas não atualiza estruturas já existentes.
 
@@ -179,6 +210,8 @@ uv run python -m unittest discover -s tests -v
 ```
 
 Os testes verificam a conexão com o MySQL, os CRUDs de itens e retiradas, paginação, validação de dados, integridade dos vínculos, conflitos, autenticação e acesso à documentação. O fluxo de login cobre envio SMTP simulado, cadastro após confirmação, expiração, tentativas, reenvio, falhas de envio e confirmação concorrente do mesmo código.
+
+Os testes de fotos cobrem cadastro com imagem obrigatória, rollback do item se a foto falhar, consulta, substituição, autenticação, formatos inválidos, limites de tamanho e resolução, orientação, remoção de EXIF, bloqueio da exclusão avulsa e preservação da foto quando a exclusão do item é bloqueada.
 
 ## Uso de IA
 
