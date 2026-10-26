@@ -1,6 +1,7 @@
 email-validator
 fastapi
 pydantic-settings
+pyjwt
 pymysql[rsa]
 sqlmodel
 uvicorn

@@ -3,8 +3,10 @@ import unittest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
+from app.auth import exigir_autenticacao
 from app.database import engine, get_session
 from app.main import app
+from app.models.user import Usuario
 
 
 class ItemTests(unittest.TestCase):
@@ -16,6 +18,10 @@ class ItemTests(unittest.TestCase):
             Session(bind=connection, join_transaction_mode="create_savepoint")
         )
         app.dependency_overrides[get_session] = lambda: session
+        self.usuario = Usuario.model_validate({"nome": "Maria Silva", "email": "maria@al.insper.edu.br"})
+        session.add(self.usuario)
+        session.flush()
+        app.dependency_overrides[exigir_autenticacao] = lambda: self.usuario
         self.addCleanup(app.dependency_overrides.clear)
         self.client = self.enterContext(TestClient(app))
         self.item_data = {

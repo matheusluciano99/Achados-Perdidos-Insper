@@ -3,8 +3,8 @@ from contextlib import asynccontextmanager
 import fastapi
 from sqlmodel import SQLModel
 
+from app.auth import exigir_autenticacao
 from app.database import engine
-from app.models.user import Usuario
 from app.routes.retiradas import router as retiradas_router
 from app.routes.items import router as items_router
 
@@ -22,8 +22,8 @@ app = fastapi.FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
-app.include_router(items_router)
-app.include_router(retiradas_router)
+app.include_router(items_router, dependencies=[fastapi.Depends(exigir_autenticacao)])
+app.include_router(retiradas_router, dependencies=[fastapi.Depends(exigir_autenticacao)])
 
 
 @app.get("/", summary="Consultar mensagem inicial")
