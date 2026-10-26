@@ -32,12 +32,15 @@ Exemplo de corpo para cadastro e atualização completa:
 {
   "nome": "Garrafa de água",
   "descricao": "Garrafa azul com tampa preta",
+  "predio": 1,
   "local_encontrado": "Biblioteca",
   "encontrado_em": "2026-10-25T10:30:00"
 }
 ```
 
 Todos esses campos são obrigatórios. Os textos têm espaços removidos das extremidades e não podem ficar vazios. Os limites são 100 caracteres para `nome`, 1000 para `descricao` e 200 para `local_encontrado`. A data usa o horário local de São Paulo, sem indicação de fuso horário. O banco gera o `id`, e a API rejeita campos adicionais nas requisições.
+
+`predio` é um número inteiro obrigatório: 1, 2 ou 3. A API rejeita prédios fora desse conjunto. `local_encontrado` é um texto livre para detalhar o lugar, como `Biblioteca`, `Corredor do segundo andar` ou `Sala Amador Aguiar`.
 
 O cadastro vincula o item ao usuário autenticado. A resposta inclui `id_usuario`, definido pela API e preservado nas atualizações.
 
@@ -161,7 +164,7 @@ O mesmo comando de inicialização do servidor está disponível por meio de `ju
 
 Na inicialização, a API cria as tabelas de itens, retiradas, usuários e códigos de login caso elas ainda não existam. A documentação interativa está disponível em `http://127.0.0.1:8000/docs`.
 
-Para atualizar um banco de desenvolvimento antigo, com `item` e `collection` vazias, os scripts em `migrations/` devem ser executados uma vez, na ordem numérica, antes de iniciar esta versão da API. Eles renomeiam as tabelas e colunas e adicionam os vínculos com usuários. Bancos com registros existentes precisam ter seus usuários identificados antes dessa alteração. A criação automática de tabelas não atualiza estruturas já existentes.
+Os scripts em `migrations/` atualizam bancos de desenvolvimento antigos e devem ser executados uma vez, na ordem numérica, conforme a versão do banco. `001_nomes_em_portugues.sql` renomeia as tabelas e colunas; `002_vincular_usuarios.sql` adiciona os vínculos com usuários; `003_adicionar_predio.sql` adiciona o prédio obrigatório ao item. As alterações foram aplicadas localmente com a tabela de itens vazia. Se houver registros antigos, seus usuários e prédios reais precisam ser identificados antes de adicionar os campos obrigatórios. A criação automática de tabelas não atualiza estruturas já existentes.
 
 O MySQL fica disponível em `127.0.0.1:3306`. A porta pode ser alterada em `MYSQL_PORT`. Os dados são armazenados no volume `mysql_data` e preservados ao parar o contêiner com `docker compose stop mysql`.
 
