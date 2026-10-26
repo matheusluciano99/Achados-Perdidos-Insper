@@ -5,8 +5,9 @@ from sqlmodel import SQLModel
 
 from app.auth import exigir_autenticacao
 from app.database import engine
-from app.routes.retiradas import router as retiradas_router
+from app.routes.auth import router as auth_router
 from app.routes.items import router as items_router
+from app.routes.retiradas import router as retiradas_router
 
 
 @asynccontextmanager
@@ -22,6 +23,7 @@ app = fastapi.FastAPI(
     version="0.1.0",
     lifespan=lifespan,
 )
+app.include_router(auth_router)
 app.include_router(items_router, dependencies=[fastapi.Depends(exigir_autenticacao)])
 app.include_router(retiradas_router, dependencies=[fastapi.Depends(exigir_autenticacao)])
 

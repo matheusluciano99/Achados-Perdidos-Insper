@@ -8,7 +8,6 @@ from app.auth import UsuarioDep
 from app.database import SessionDep, commit_or_conflict
 from app.models.item import Item, ItemBase, ItemPublic
 
-
 router = APIRouter(prefix="/itens", tags=["Itens"])
 
 
