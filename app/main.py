@@ -4,6 +4,7 @@ import fastapi
 from sqlmodel import SQLModel
 
 from app.database import engine
+from app.models.user import Usuario
 from app.routes.retiradas import router as retiradas_router
 from app.routes.items import router as items_router
 
