@@ -2,6 +2,10 @@
 
 API REST de achados e perdidos do campus Insper, desenvolvida como projeto individual da disciplina de **Megadados**, no quinto semestre de Ciência da Computação.
 
+## Vídeo de demonstração
+
+[Assista à demonstração da API](https://youtu.be/xOh1A9Xkqw8).
+
 ## Endpoints
 
 As rotas de itens e retiradas exigem autenticação. A raiz, as rotas de login e a documentação são públicas.
